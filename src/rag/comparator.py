@@ -66,7 +66,16 @@ class DocumentComparator:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": combined_corpus}
                 ])
-                content = response.content.strip()
+                content = response.content
+                if isinstance(content, list):
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict) and "text" in block:
+                            text_parts.append(block["text"])
+                        elif isinstance(block, str):
+                            text_parts.append(block)
+                    content = "".join(text_parts)
+                content = content.strip()
 
                 if content.startswith("```json"):
                     content = content.split("```json")[1].split("```")[0].strip()

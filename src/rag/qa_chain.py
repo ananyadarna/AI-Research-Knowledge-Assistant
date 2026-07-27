@@ -123,7 +123,16 @@ class RAGQAEngine:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query}
                 ])
-                content = response.content.strip()
+                content = response.content
+                if isinstance(content, list):
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict) and "text" in block:
+                            text_parts.append(block["text"])
+                        elif isinstance(block, str):
+                            text_parts.append(block)
+                    content = "".join(text_parts)
+                content = content.strip()
                 
                 # Attempt to parse JSON response
                 try:

@@ -59,4 +59,5 @@ def read_root():
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting server at http://{settings.host}:{settings.port}")
+    # Trigger reload of environment configurations with standard key
     uvicorn.run("main:app", host=settings.host, port=settings.port, reload=True)
