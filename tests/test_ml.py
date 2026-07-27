@@ -1,7 +1,7 @@
 import os
+import csv
 import shutil
 import numpy as np
-import pandas as pd
 import pytest
 from src.ml.dataset_prep import prepare_dataset
 from src.ml.train_classifier import train_document_classifier
@@ -34,59 +34,90 @@ def setup_test_assets():
 
 def test_classifier_training_and_prediction():
     """
-    Verifies that the dataset preparation generates data, training saves Keras
+    Verifies that the dataset preparation generates data, training saves
     models, and prediction loads them to classify technical text.
     """
-    # 1. Check training CSV is created
+    # 1. Check training CSV is created using built-in csv module
     assert os.path.exists(TEST_DATASET_PATH)
-    df = pd.read_csv(TEST_DATASET_PATH)
-    assert len(df) > 0
-    assert "text" in df.columns
-    assert "label" in df.columns
+    
+    texts = []
+    labels = []
+    with open(TEST_DATASET_PATH, mode="r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        assert fieldnames is not None
+        assert "text" in fieldnames
+        assert "label" in fieldnames
+        for row in reader:
+            texts.append(row["text"])
+            labels.append(int(row["label"]))
+            
+    assert len(texts) > 0
+
 
     # 2. Run a fast training iteration (we override default paths)
     import pickle
-    from tensorflow.keras.preprocessing.text import Tokenizer
-    from tensorflow.keras.preprocessing.sequence import pad_sequences
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Embedding, GlobalAveragePooling1D, Dense, Dropout
+    from src.ml.predictor import HAS_TENSORFLOW
+    from sklearn.pipeline import Pipeline
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.naive_bayes import MultinomialNB
 
-    texts = df["text"].astype(str).tolist()
-    labels = df["label"].astype(int).tolist()
 
-    max_vocab_size = 1000
-    max_length = 50
-
-    tokenizer = Tokenizer(num_words=max_vocab_size, oov_token="<OOV>")
-    tokenizer.fit_on_texts(texts)
-    
-    sequences = tokenizer.texts_to_sequences(texts)
-    padded = pad_sequences(sequences, maxlen=max_length, padding="post")
-
-    X = np.array(padded)
-    y = np.array(labels)
-
-    model = Sequential([
-        Embedding(input_dim=max_vocab_size, output_dim=16, input_length=max_length),
-        GlobalAveragePooling1D(),
-        Dense(16, activation="relu"),
-        Dense(7, activation="softmax")
+    # Always train and save the scikit-learn pipeline for the test
+    sklearn_pipeline = Pipeline([
+        ('vectorizer', TfidfVectorizer(max_features=1000, stop_words='english')),
+        ('classifier', MultinomialNB())
     ])
+    sklearn_pipeline.fit(texts, labels)
     
-    model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
-    # Train for only 1 epoch to verify execution logic without slow computation
-    model.fit(X, y, epochs=1, batch_size=32, verbose=0)
+    # Save test fallback path
+    TEST_FALLBACK_PATH = os.path.join(TEST_MODEL_DIR, "test_sklearn_classifier.pickle")
+    with open(TEST_FALLBACK_PATH, "wb") as f:
+        pickle.dump(sklearn_pipeline, f)
 
-    # Save test artifacts
-    model.save(TEST_MODEL_PATH)
-    with open(TEST_TOKENIZER_PATH, "wb") as f:
-        pickle.dump(tokenizer, f)
+    if HAS_TENSORFLOW:
+        from tensorflow.keras.preprocessing.text import Tokenizer
+        from tensorflow.keras.preprocessing.sequence import pad_sequences
+        from tensorflow.keras.models import Sequential
 
-    assert os.path.exists(TEST_MODEL_PATH)
-    assert os.path.exists(TEST_TOKENIZER_PATH)
+        max_vocab_size = 1000
+        max_length = 50
+
+        tokenizer = Tokenizer(num_words=max_vocab_size, oov_token="<OOV>")
+        tokenizer.fit_on_texts(texts)
+        
+        sequences = tokenizer.texts_to_sequences(texts)
+        padded = pad_sequences(sequences, maxlen=max_length, padding="post")
+
+        X = np.array(padded)
+        y = np.array(labels)
+
+        model = Sequential([
+            Embedding(input_dim=max_vocab_size, output_dim=16, input_length=max_length),
+            GlobalAveragePooling1D(),
+            Dense(16, activation="relu"),
+            Dense(7, activation="softmax")
+        ])
+        
+        model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
+        model.fit(X, y, epochs=1, batch_size=32, verbose=0)
+
+        # Save test artifacts
+        model.save(TEST_MODEL_PATH)
+        with open(TEST_TOKENIZER_PATH, "wb") as f:
+            pickle.dump(tokenizer, f)
+
+        assert os.path.exists(TEST_MODEL_PATH)
+        assert os.path.exists(TEST_TOKENIZER_PATH)
+    
+    assert os.path.exists(TEST_FALLBACK_PATH)
 
     # 3. Instantiate DocumentClassifier and run prediction
-    classifier = DocumentClassifier(model_path=TEST_MODEL_PATH, tokenizer_path=TEST_TOKENIZER_PATH)
+    classifier = DocumentClassifier(
+        model_path=TEST_MODEL_PATH, 
+        tokenizer_path=TEST_TOKENIZER_PATH,
+        fallback_path=TEST_FALLBACK_PATH
+    )
     
     # Predict on test texts
     test_text = "Amazon Web Services (AWS) deployment using Kubernetes and Docker microservices containers."
@@ -108,3 +139,4 @@ def test_classifier_training_and_prediction():
         "Artificial Intelligence", "Machine Learning", "Computer Vision",
         "Natural Language Processing", "Robotics", "Cyber Security", "Cloud Computing"
     ]
+

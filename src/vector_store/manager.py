@@ -124,6 +124,7 @@ class VectorSearchManager:
             where=filter_dict if doc_ids else None,
             include=["documents", "metadatas"]
         )
+        print("DEBUG_KEYWORD_GET:", all_chunks)
         
         if not all_chunks or not all_chunks["documents"]:
             return []
@@ -141,19 +142,34 @@ class VectorSearchManager:
         
         # Sort indices by score descending
         sorted_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
-        top_indices = sorted_indices[:top_k]
         
         results = []
-        for idx in top_indices:
-            if scores[idx] <= 0:
-                continue  # Ignore zero/negative matches
+        for idx in sorted_indices:
+            # Check for actual token intersection to handle zero IDF on tiny corpora (N=2)
+            doc_words = set(corpus_tokenized[idx])
+            has_overlap = any(qw in doc_words for qw in query_tokenized)
+            
+            if scores[idx] <= 0 and not has_overlap:
+                continue  # Ignore if it has no match and non-positive score
+                
+            score = scores[idx]
+            if score <= 0 and has_overlap:
+                # Assign a tiny positive score based on match count so RRF ranking can rank it
+                overlap_count = sum(1 for qw in query_tokenized if qw in doc_words)
+                score = 1e-5 * overlap_count
+
             results.append({
                 "id": ids[idx],
                 "text": docs[idx],
                 "metadata": metas[idx],
-                "score": float(scores[idx])
+                "score": float(score)
             })
-        return results
+            
+        # Re-sort results to ensure overlap-scored items rank above zero-scored items
+        results = sorted(results, key=lambda x: x["score"], reverse=True)
+        return results[:top_k]
+
+
 
     def _hybrid_query(self, query: str, doc_ids: list[str] = None, top_k: int = 5) -> list[dict]:
         """
