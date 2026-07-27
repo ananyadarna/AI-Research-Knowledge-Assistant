@@ -190,3 +190,46 @@ def delete_document(doc_id: str, db: Session = Depends(get_db)):
         "doc_id": doc_id,
         "message": f"Document {doc.file_name} successfully deleted."
     }
+
+@router.post("/{doc_id}/reprocess", response_model=dict)
+def reprocess_document(
+    doc_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    Cleans up old vector store chunks and re-triggers the document ingestion pipeline.
+    """
+    doc = db.query(DocumentMetadata).filter(DocumentMetadata.doc_id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=400, detail="Source PDF file not found on disk. Cannot reprocess.")
+
+    # 1. Delete old chunks from Chroma DB
+    try:
+        vector_manager.delete_document_chunks(doc_id)
+    except Exception as e:
+        logger.error(f"Error removing old vector chunks for reprocessing {doc_id}: {e}")
+
+    # 2. Reset database state
+    doc.processing_status = "PENDING"
+    doc.upload_timestamp = datetime.utcnow()
+    db.commit()
+
+    # 3. Re-enqueue background pipeline task
+    background_tasks.add_task(
+        process_document_background,
+        doc_id=doc_id,
+        file_path=doc.file_path,
+        file_name=doc.file_name,
+        db=db
+    )
+
+    return {
+        "doc_id": doc_id,
+        "processing_status": "PENDING",
+        "message": f"Reprocessing for document {doc.file_name} started in the background."
+    }
+
