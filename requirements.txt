@@ -1,0 +1,17 @@
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0
+pydantic-settings>=2.0
+tensorflow>=2.15.0
+chromadb>=0.4.15
+pymupdf>=1.23.0
+sentence-transformers>=2.2.2
+scikit-learn>=1.0
+sqlalchemy>=2.0
+pytest>=7.0
+rank-bm25>=0.2.2
+langchain>=0.1.0
+langchain-community>=0.0.10
+langchain-openai>=0.0.2
+langchain-google-genai>=0.0.5
+python-multipart>=0.0.7

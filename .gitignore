@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+
+# Configuration
+.env
+
+# Application local storage & model artifacts
+data/
+models/tf_classifier.h5
+models/tokenizer.pickle
+
+# IDEs
+.vscode/
+.idea/
