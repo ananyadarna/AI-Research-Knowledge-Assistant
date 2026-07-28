@@ -96,9 +96,11 @@ graph TD
     ```
 
 ### Deployment
-* **Platform**: Render (`Render Web Service`)
+* **Platform**: Render Cloud (`Render Web Service`)
 * **Configuration**: `render.yaml`
-* **Live API Specs**: `https://<your-render-app-name>.onrender.com/docs`
+* **Live Production URL**: [https://ai-research-knowledge-assistant-erlk.onrender.com](https://ai-research-knowledge-assistant-erlk.onrender.com)
+* **Live Interactive Swagger Docs**: [https://ai-research-knowledge-assistant-erlk.onrender.com/docs](https://ai-research-knowledge-assistant-erlk.onrender.com/docs)
+* **Live ReDoc Specifications**: [https://ai-research-knowledge-assistant-erlk.onrender.com/redoc](https://ai-research-knowledge-assistant-erlk.onrender.com/redoc)
 
 ---
 
