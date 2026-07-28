@@ -10,9 +10,7 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"
     openai_api_key: str = ""
     openai_model_name: str = "gpt-4o-mini"
-    google_api_key: str = ""
-    gemini_model_name: str = "gemini-1.5-flash"
-    embedding_provider: str = "local"  # options: local, openai, gemini
+    embedding_provider: str = "local"  # options: local, openai
 
     class Config:
         env_file = ".env"

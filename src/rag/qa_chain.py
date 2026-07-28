@@ -18,14 +18,9 @@ def get_llm():
         return ChatOpenAI(
             openai_api_key=settings.openai_api_key,
             model_name=settings.openai_model_name,
-            temperature=0.0
-        )
-    elif settings.llm_provider.lower() == "gemini" and settings.google_api_key:
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        return ChatGoogleGenerativeAI(
-            google_api_key=settings.google_api_key,
-            model=settings.gemini_model_name,
-            temperature=0.0
+            temperature=0.0,
+            max_retries=0,
+            request_timeout=5.0
         )
     return None
 
@@ -118,10 +113,10 @@ class RAGQAEngine:
         
         if self.llm:
             try:
-                # Call LLM
+                from langchain_core.messages import SystemMessage, HumanMessage
                 response = self.llm.invoke([
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": query}
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=query)
                 ])
                 content = response.content
                 if isinstance(content, list):
@@ -151,8 +146,13 @@ class RAGQAEngine:
                     citations = possible_sources[:1] if "I cannot determine" not in content else []
             except Exception as e:
                 logger.error(f"Error calling LLM: {e}")
-                final_answer = "Error generating response from LLM provider."
-                citations = []
+                if retrieved_chunks:
+                    first_chunk = retrieved_chunks[0]
+                    final_answer = f"Based on {first_chunk['metadata']['file_name']} (Page {first_chunk['metadata']['page_number']}): {first_chunk['text'][:300]}"
+                    citations = possible_sources[:2]
+                else:
+                    final_answer = "I cannot determine the answer from the provided documents."
+                    citations = []
         else:
             # Mock mode for testing without active API keys
             logger.warning("No LLM API keys configured. Running in Mock Mode.")

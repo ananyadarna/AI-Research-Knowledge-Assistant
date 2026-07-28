@@ -39,7 +39,7 @@ graph TD
 *   **Database**: SQLite (SQL engine managed via SQLAlchemy ORM for metadata, metrics, and chat history)
 *   **Document Parsing**: PyMuPDF (extremely fast layout-preserving PDF parser)
 *   **Embedding Model**: `all-MiniLM-L6-v2` via HuggingFace Hub (downloaded locally by Chroma)
-*   **LLM Provider**: LangChain / OpenAI API (Gemini or local options supported)
+*   **LLM Provider**: LangChain / OpenAI API (`gpt-4o-mini` / `gpt-3.5-turbo`)
 *   **Machine Learning**: TensorFlow 2.x (Neural Network classification) + Scikit-Learn (Multinomial Naive Bayes pipeline fallback)
 
 ---
@@ -95,6 +95,11 @@ graph TD
     python -m pytest -v
     ```
 
+### Deployment
+* **Platform**: Render (`Render Web Service`)
+* **Configuration**: `render.yaml`
+* **Live API Specs**: `https://<your-render-app-name>.onrender.com/docs`
+
 ---
 
 ## 4. Environment Variables
@@ -104,7 +109,7 @@ Define the following in your `.env` file:
 | Variable | Description | Default / Example |
 | :--- | :--- | :--- |
 | `OPENAI_API_KEY` | OpenAI API credential for RAG, summary, and comparisons | `sk-...` |
-| `EMBEDDING_PROVIDER`| Provider for text vectorization (`openai`, `gemini`, or `local`) | `local` |
+| `EMBEDDING_PROVIDER`| Provider for text vectorization (`openai` or `local`) | `local` |
 | `DATABASE_URL` | SQLAlchemy connection string | `sqlite:///./data/assistant.db` |
 | `VECTOR_DB_DIR` | Chroma DB persistence storage directory | `./data/vector_db` |
 | `UPLOAD_DIR` | Location to save uploaded source PDF files | `./data/uploads` |
@@ -164,6 +169,10 @@ This ranks chunks that have high scores in *both* modes higher, providing maximu
 ### 6.3 Dual-Model Machine Learning Fallback
 *   **TensorFlow Neural Net**: Multi-layer Dense Net with OOV Embedding layers.
 *   **Scikit-Learn NB Fallback**: Uses `TfidfVectorizer` + `MultinomialNB`. If a Python 3.13 workspace or environment has network limits blocking TensorFlow downloads, the system automatically falls back to loading scikit-learn models.
+
+### 6.4 Resilient Vector Store Manager Fallback
+*   **Chroma DB**: Uses Chroma DB persistent collection by default.
+*   **SQLite Vector Store Fallback**: If Windows Application Control (AppLocker) or python virtual environments restrict loading third-party C-DLL binaries (`cygrpc.pyd`), `VectorSearchManager` automatically initializes a pure-python/SQLite persistent vector store fallback with zero startup downtime.
 
 ---
 
