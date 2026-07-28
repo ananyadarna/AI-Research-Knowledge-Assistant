@@ -4,7 +4,6 @@ pydantic>=2.0
 pydantic-settings>=2.0
 chromadb>=0.4.15
 pymupdf>=1.23.0
-sentence-transformers>=2.2.2
 scikit-learn>=1.0
 sqlalchemy>=2.0
 pytest>=7.0

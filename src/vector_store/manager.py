@@ -137,9 +137,12 @@ class VectorSearchManager:
                 api_key=settings.openai_api_key,
                 model_name="text-embedding-3-small"
             )
-        return embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="all-MiniLM-L6-v2"
-        )
+        try:
+            return embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="all-MiniLM-L6-v2"
+            )
+        except Exception:
+            return None
 
     def add_document_chunks(self, doc_id: str, file_name: str, chunks: list[dict]):
         if not chunks:
